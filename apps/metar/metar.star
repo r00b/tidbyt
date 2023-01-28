@@ -1,0 +1,234 @@
+"""
+Applet: METAR
+Author: Rob Steilberg
+Summary: METAR aviation weather
+Description: Show METAR (aviation weather) text for one primary airport and flight
+    category for four secondary airports
+"""
+
+load("schema.star", "schema")
+load("render.star", "render")
+load("http.star", "http")
+load("xpath.star", "xpath")
+load("math.star", "math")
+
+WX_URL = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
+DEFAULT_PRIMARY = "KAUS"
+DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
+
+MAX_AGE = 60 * 10
+MAX_AIRPORT_TTL = 60 * 10
+
+
+def fetch_airport_wx(airports):
+    result = {}
+    response = http.get(WX_URL % airports)
+    if response.status_code != 200:
+        return result
+    xml = xpath.loads(response.body())
+    for airport in airports.split(","):
+        result[airport] = parse_airport_wx(xml, airport)
+    return result
+
+
+def parse_airport_wx(xml, airport):
+    query_prefix = "/response/data/METAR[station_id='%s']/" % airport
+    # extract raw values from XML via XPath
+    flight_category = xml.query(query_prefix + "/flight_category")
+    altimeter = xml.query(query_prefix + "/altim_in_hg")
+    temp = xml.query(query_prefix + "/temp_c")
+    dewpoint = xml.query(query_prefix + "/dewpoint_c")
+    wind_dir_degrees = xml.query(query_prefix + "/wind_dir_degrees")
+    wind_speed_kt = xml.query(query_prefix + "/wind_speed_kt")
+    wind_gust_kt = xml.query(query_prefix + "/wind_gust_kt")
+    visibility_sm = xml.query(query_prefix + "/visibility_statute_mi")
+    # zip up sky coverage with respective bases
+    sky_cover = xml.query_all(query_prefix + "/sky_condition/@sky_cover") or []
+    cloud_bases = xml.query_all(query_prefix + "/sky_condition/@cloud_base_ft_agl") or []
+    sky_condition = []
+    for cover, base in zip(sky_cover, cloud_bases):
+        sky_condition.append(cover + sanitize_base(base))
+    # i.e. TRSA, -BR, +SHRA, etc
+    wx = xml.query(query_prefix + "/wx_string")
+
+    round_to_int = lambda t: int(math.round(float(t)))
+    return {
+        "station_id": airport,
+        "flight_category": flight_category,
+        "altimeter": apply_if_present(lambda a: round(float(a), 2), altimeter),
+        "temp": apply_if_present(round_to_int, temp),
+        "dewpoint": apply_if_present(round_to_int, dewpoint),
+        "wind_dir_degrees": apply_if_present(int, wind_dir_degrees),
+        "wind_speed_kt": apply_if_present(int, wind_speed_kt),
+        "wind_gust_kt": apply_if_present(int, wind_gust_kt),
+        "visibility_sm": apply_if_present(round_to_int, visibility_sm),
+        "sky_condition": sky_condition,
+        "wx": wx
+    }
+
+
+def sanitize_base(base):
+    result = base[:-2]
+    while len(result) != 3:
+        result = "0" + result
+    return result
+
+
+def airport_wx_string(airport_wx):
+    template = []
+    # wind direction and speed with gust if any
+    direction = airport_wx["wind_dir_degrees"]
+    speed = airport_wx["wind_speed_kt"]
+    gust = airport_wx["wind_gust_kt"]
+    wind = "%s @ %s%sKT" % (direction, speed, ("G%s" % gust) if gust else "")
+    if direction and speed:
+        template.append(wind)
+    # visibility
+    visibility = airport_wx["visibility_sm"]
+    if visibility:
+        template.append("%sSM" % visibility)
+    # sky condition
+    sky_conditions = airport_wx["sky_condition"]
+    if len(sky_conditions) > 0:
+        template.append(" ".join(sky_conditions))
+    # temperature/dewpoint
+    temp = airport_wx["temp"]
+    dewpoint = airport_wx["dewpoint"]
+    if temp and dewpoint:
+        template.append("%s/%s" % (temp, dewpoint))
+    # altimeter
+    altimeter = airport_wx["altimeter"]
+    if altimeter:
+        template.append("A%s" % altimeter)
+    # weather
+    wx = airport_wx["wx"]
+    if wx:
+        template.append(wx)
+    return " ".join(template)
+
+
+def render_airports(airport_wx, primary_airport, secondary_airports):
+    row_widgets = []
+    # primary airport identifier and category
+    primary_airport_wx = airport_wx[primary_airport]
+    primary_flight_category = primary_airport_wx["flight_category"]
+    row_widgets.append(
+        render.Row([
+            render_flight_category(primary_airport, primary_flight_category),
+            render.Text(" %s" % primary_flight_category or "", color=color_for_state(primary_flight_category)),
+        ])
+    )
+    # primary airport scrolling wx
+    primary_airport_wx_string = airport_wx_string(airport_wx[primary_airport])
+    row_widgets.append(
+        render.Marquee(
+            width=64,
+            child=render.Text(primary_airport_wx_string),
+            offset_start=64,
+            offset_end=48
+        )
+    )
+    # secondary airport flight categories
+    secondary_airport_pairs = chunk_list(secondary_airports, 2)
+    for [first_icao, second_icao] in secondary_airport_pairs:
+        row_widgets.append(
+            render.Row(
+                [
+                    render_flight_category(first_icao, airport_wx[first_icao]["flight_category"]),
+                    render_flight_category(second_icao, airport_wx[second_icao]["flight_category"])
+                ],
+                cross_align="center",
+            ),
+
+        )
+    return render.Root(
+        child=render.Column(row_widgets),
+        max_age=MAX_AGE
+    )
+
+
+def render_flight_category(ident, flight_category):
+    row = render.Row(
+        [
+            render.Padding(
+                pad=(1, 0, 0, 0),
+                child=render.Stack([
+                    render.Box(width=24, height=8),
+                    render.Padding(
+                        pad=(1, 0, 0, 0),
+                        child=render.Text(ident)),
+                ]),
+            ),
+            render.Circle(color=color_for_state(flight_category),
+                          diameter=6),
+        ],
+        cross_align="center",
+    )
+    return row
+
+
+def color_for_state(flight_category):
+    if flight_category == "VFR":
+        return "#00FF00"
+    elif flight_category == "IFR":
+        return "#FF0000"
+    elif flight_category == "MVFR":
+        return "#0000FF"
+    elif flight_category == "LIFR":
+        return "#FF00FF"
+    else:
+        print("Unknown flight category %s", flight_category)
+        return "#000000"
+
+
+def chunk_list(items, max_items_per_chunk):
+    chunks = []
+    for i in range(len(items)):
+        chunk_index = math.floor(i / max_items_per_chunk)
+
+        if chunk_index == len(chunks):
+            chunks.append([])
+
+        chunks[-1].append(items[i])
+
+    return chunks
+
+
+def round(num, precision):
+    """Round a float to the specified number of significant digits"""
+    return math.round(num * math.pow(10, precision)) / math.pow(10, precision)
+
+
+def apply_if_present(fn, arg):
+    return fn(arg) if arg else None
+
+
+def get_schema():
+    return schema.Schema(
+        version="1",
+        fields=[
+            schema.Text(
+                id="icao_primary",
+                name="Primary Airport",
+                desc="ICAO of the primary airport",
+                icon="plane",
+            ),
+            schema.Text(
+                id="icao_secondary",
+                name="Airport(s)",
+                desc="Comma-separated list of ICAO airport codes",
+                icon="plane",
+            ),
+        ],
+    )
+
+
+def main(config):
+    arg0 = config.get("icao_primary")
+    arg1 = config.get("icao_secondary")
+    primary_airport = arg0.upper() if arg0 else DEFAULT_PRIMARY
+    secondary_airports_str = arg1.upper() if arg1 else DEFAULT_SECONDARY
+    secondary_airports = secondary_airports_str.split(",")
+
+    airport_wx = fetch_airport_wx("%s,%s" % (primary_airport, secondary_airports_str))
+    return render_airports(airport_wx, primary_airport, secondary_airports)

@@ -227,7 +227,6 @@ def render_two_airports(airports):
         linespacing=0,
         width=64,
     )
-    metar = render.Text(result2["text"])
 
     row_widgets.append(
         render.Marquee(
