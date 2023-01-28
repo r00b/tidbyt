@@ -24,6 +24,7 @@ def fetch_airport_wx(airports):
     result = {}
     response = http.get(WX_URL % airports)
     if response.status_code != 200:
+        print("Bad response from aviationweather.gov: %s" % response.status_code)
         return result
     xml = xpath.loads(response.body())
     for airport in airports.split(","):
@@ -66,7 +67,7 @@ def parse_airport_wx(xml, airport):
         "wx": wx
     }
 
-
+# 25000 -> 250; 6500 -> 065; 200 -> 002
 def sanitize_base(base):
     result = base[:-2]
     while len(result) != 3:
@@ -77,31 +78,31 @@ def sanitize_base(base):
 def airport_wx_string(airport_wx):
     template = []
     # wind direction and speed with gust if any
-    direction = airport_wx["wind_dir_degrees"]
-    speed = airport_wx["wind_speed_kt"]
-    gust = airport_wx["wind_gust_kt"]
+    direction = get_if_present(airport_wx, "wind_dir_degrees", None)
+    speed = get_if_present(airport_wx, "wind_speed_kt", None)
+    gust = get_if_present(airport_wx, "wind_gust_kt", None)
     wind = "%s @ %s%sKT" % (direction, speed, ("G%s" % gust) if gust else "")
     if direction and speed:
         template.append(wind)
     # visibility
-    visibility = airport_wx["visibility_sm"]
+    visibility = get_if_present(airport_wx, "visibility_sm", None)
     if visibility:
         template.append("%sSM" % visibility)
     # sky condition
-    sky_conditions = airport_wx["sky_condition"]
-    if len(sky_conditions) > 0:
+    sky_conditions = get_if_present(airport_wx, "sky_condition", None)
+    if sky_conditions and len(sky_conditions) > 0:
         template.append(" ".join(sky_conditions))
     # temperature/dewpoint
-    temp = airport_wx["temp"]
-    dewpoint = airport_wx["dewpoint"]
+    temp = get_if_present(airport_wx, "temp", None)
+    dewpoint = get_if_present(airport_wx, "dewpoint", None)
     if temp and dewpoint:
         template.append("%s/%s" % (temp, dewpoint))
     # altimeter
-    altimeter = airport_wx["altimeter"]
+    altimeter = get_if_present(airport_wx, "altimeter", None)
     if altimeter:
         template.append("A%s" % altimeter)
     # weather
-    wx = airport_wx["wx"]
+    wx = get_if_present(airport_wx, "wx", None)
     if wx:
         template.append(wx)
     return " ".join(template)
@@ -110,8 +111,8 @@ def airport_wx_string(airport_wx):
 def render_airports(airport_wx, primary_airport, secondary_airports):
     row_widgets = []
     # primary airport identifier and category
-    primary_airport_wx = airport_wx[primary_airport]
-    primary_flight_category = primary_airport_wx["flight_category"]
+    primary_airport_wx = get_if_present(airport_wx, primary_airport, {})
+    primary_flight_category = get_if_present(primary_airport_wx, "flight_category", None)
     row_widgets.append(
         render.Row([
             render_flight_category(primary_airport, primary_flight_category),
@@ -119,7 +120,7 @@ def render_airports(airport_wx, primary_airport, secondary_airports):
         ])
     )
     # primary airport scrolling wx
-    primary_airport_wx_string = airport_wx_string(airport_wx[primary_airport])
+    primary_airport_wx_string = airport_wx_string(primary_airport_wx)
     row_widgets.append(
         render.Marquee(
             width=64,
@@ -131,11 +132,13 @@ def render_airports(airport_wx, primary_airport, secondary_airports):
     # secondary airport flight categories
     secondary_airport_pairs = chunk_list(secondary_airports, 2)
     for [first_icao, second_icao] in secondary_airport_pairs:
+        first_airport_wx = get_if_present(airport_wx, first_icao, {"flight_category": None})
+        second_airport_wx = get_if_present(airport_wx, second_icao, {"flight_category": None})
         row_widgets.append(
             render.Row(
                 [
-                    render_flight_category(first_icao, airport_wx[first_icao]["flight_category"]),
-                    render_flight_category(second_icao, airport_wx[second_icao]["flight_category"])
+                    render_flight_category(first_icao, first_airport_wx["flight_category"]),
+                    render_flight_category(second_icao, second_airport_wx["flight_category"])
                 ],
                 cross_align="center",
             ),
@@ -168,7 +171,9 @@ def render_flight_category(ident, flight_category):
 
 
 def color_for_state(flight_category):
-    if flight_category == "VFR":
+    if flight_category == None:
+        return "#000000"
+    elif flight_category == "VFR":
         return "#00FF00"
     elif flight_category == "IFR":
         return "#FF0000"
@@ -177,7 +182,7 @@ def color_for_state(flight_category):
     elif flight_category == "LIFR":
         return "#FF00FF"
     else:
-        print("Unknown flight category %s", flight_category)
+        print("Unknown flight category %s" % flight_category)
         return "#000000"
 
 
@@ -185,22 +190,22 @@ def chunk_list(items, max_items_per_chunk):
     chunks = []
     for i in range(len(items)):
         chunk_index = math.floor(i / max_items_per_chunk)
-
         if chunk_index == len(chunks):
             chunks.append([])
-
         chunks[-1].append(items[i])
-
     return chunks
 
-
+# round(29.9269, 2) -> 29.93
 def round(num, precision):
-    """Round a float to the specified number of significant digits"""
     return math.round(num * math.pow(10, precision)) / math.pow(10, precision)
 
 
 def apply_if_present(fn, arg):
     return fn(arg) if arg else None
+
+
+def get_if_present(dict, key, fallback):
+    return dict[key] if key in dict else fallback
 
 
 def get_schema():
