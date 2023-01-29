@@ -67,6 +67,7 @@ def parse_airport_wx(xml, airport):
         "wx": wx
     }
 
+
 # 25000 -> 250; 6500 -> 065; 200 -> 002
 def sanitize_base(base):
     result = base[:-2]
@@ -100,7 +101,10 @@ def airport_wx_string(airport_wx):
     # altimeter
     altimeter = get_if_present(airport_wx, "altimeter")
     if altimeter:
-        template.append("A%s" % altimeter)
+        altimeter_formatted = str(altimeter)
+        while len(altimeter_formatted) < 5:
+            altimeter_formatted += "0"
+        template.append("A%s" % altimeter_formatted)
     # weather
     wx = get_if_present(airport_wx, "wx")
     if wx:
@@ -195,6 +199,7 @@ def chunk_list(items, max_items_per_chunk):
         chunks[-1].append(items[i])
     return chunks
 
+
 # round(29.9269, 2) -> 29.93
 def round(num, precision):
     return math.round(num * math.pow(10, precision)) / math.pow(10, precision)
@@ -204,7 +209,7 @@ def apply_if_present(fn, arg):
     return fn(arg) if arg else None
 
 
-def get_if_present(dict, key, fallback = None):
+def get_if_present(dict, key, fallback=None):
     return dict[key] if key in dict else fallback
 
 
