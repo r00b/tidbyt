@@ -26,11 +26,11 @@ def fetch_aircraft_board(icao):
 def render_aircraft_board(board):
     row_widgets = []
     # render arrivals
+    arriving = board["arriving"] + board["arrived"]
     row_widgets.append(render.Text(
-        content="ARRIVALS:",
+        content="ARRIVALS: %s" % len(arriving),
         color="#F3DC5D"
     ))
-    arriving = board["arriving"] + board["arrived"]
     arrivals = []
     for arrival in arriving:
         text = "%s, %s" % (arrival["flight"], arrival["type"])
@@ -46,11 +46,11 @@ def render_aircraft_board(board):
         )
     )
     # render departures
+    departing = board["departing"] + board["departed"]
     row_widgets.append(render.Text(
-        content="DEPARTURES:",
+        content="DEPARTURES: %s" % len(departing),
         color="#F3DC5D"
     ))
-    departing = board["departing"] + board["departed"]
     departures = []
     for departure in departing:
         text = "%s, %s" % (departure["flight"], departure["type"])
