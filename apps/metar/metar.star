@@ -78,31 +78,31 @@ def sanitize_base(base):
 def airport_wx_string(airport_wx):
     template = []
     # wind direction and speed with gust if any
-    direction = get_if_present(airport_wx, "wind_dir_degrees", None)
-    speed = get_if_present(airport_wx, "wind_speed_kt", None)
-    gust = get_if_present(airport_wx, "wind_gust_kt", None)
+    direction = get_if_present(airport_wx, "wind_dir_degrees")
+    speed = get_if_present(airport_wx, "wind_speed_kt")
+    gust = get_if_present(airport_wx, "wind_gust_kt")
     wind = "%s @ %s%sKT" % (direction, speed, ("G%s" % gust) if gust else "")
     if direction and speed:
         template.append(wind)
     # visibility
-    visibility = get_if_present(airport_wx, "visibility_sm", None)
+    visibility = get_if_present(airport_wx, "visibility_sm")
     if visibility:
         template.append("%sSM" % visibility)
     # sky condition
-    sky_conditions = get_if_present(airport_wx, "sky_condition", None)
+    sky_conditions = get_if_present(airport_wx, "sky_condition")
     if sky_conditions and len(sky_conditions) > 0:
         template.append(" ".join(sky_conditions))
     # temperature/dewpoint
-    temp = get_if_present(airport_wx, "temp", None)
-    dewpoint = get_if_present(airport_wx, "dewpoint", None)
+    temp = get_if_present(airport_wx, "temp")
+    dewpoint = get_if_present(airport_wx, "dewpoint")
     if temp and dewpoint:
         template.append("%s/%s" % (temp, dewpoint))
     # altimeter
-    altimeter = get_if_present(airport_wx, "altimeter", None)
+    altimeter = get_if_present(airport_wx, "altimeter")
     if altimeter:
         template.append("A%s" % altimeter)
     # weather
-    wx = get_if_present(airport_wx, "wx", None)
+    wx = get_if_present(airport_wx, "wx")
     if wx:
         template.append(wx)
     return " ".join(template)
@@ -112,7 +112,7 @@ def render_airports(airport_wx, primary_airport, secondary_airports):
     row_widgets = []
     # primary airport identifier and category
     primary_airport_wx = get_if_present(airport_wx, primary_airport, {})
-    primary_flight_category = get_if_present(primary_airport_wx, "flight_category", None)
+    primary_flight_category = get_if_present(primary_airport_wx, "flight_category")
     row_widgets.append(
         render.Row([
             render_flight_category(primary_airport, primary_flight_category),
@@ -204,7 +204,7 @@ def apply_if_present(fn, arg):
     return fn(arg) if arg else None
 
 
-def get_if_present(dict, key, fallback):
+def get_if_present(dict, key, fallback = None):
     return dict[key] if key in dict else fallback
 
 
