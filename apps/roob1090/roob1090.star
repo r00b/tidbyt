@@ -117,11 +117,15 @@ def flight_text(aircraft, location_key):
 
 
 def render_flight_text(texts):
-    return render.Marquee(
-        width=64,
-        child=render.Text("; ".join(texts)),
-        offset_start=64,
-        offset_end=48
+    pad = 0 if len(texts) > 1 else 1
+    return render.Padding(
+        pad=(pad, 0, 0, 0),
+        child=render.Marquee(
+            width=64,
+            child=render.Text("; ".join(texts)),
+            offset_start=64,
+            offset_end=48
+        )
     )
 
 
