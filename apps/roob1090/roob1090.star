@@ -13,8 +13,10 @@ load("encoding/base64.star", "base64")
 
 AIRPORT = "KAUS"
 AIRPORT_BOARD_API_URL = "https://aircraft.robsteilberg.io/airports/boards/%s"
+
 MAX_AGE = 60
 ICON_SIZE = 7
+MARQUEE_SPEED = 30  # lower = faster
 
 LANDING_ICON = base64.decode("""
 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
@@ -67,7 +69,8 @@ def render_aircraft_board(board):
     row_widgets.append(render_flight_text(departures_texts))
     return render.Root(
         child=render.Column(row_widgets),
-        max_age=MAX_AGE
+        max_age=MAX_AGE,
+        delay=MARQUEE_SPEED
     )
 
 
@@ -117,14 +120,14 @@ def flight_text(aircraft, location_key):
 
 
 def render_flight_text(texts):
-    pad = 0 if len(texts) > 1 else 1
+    joined_text = "; ".join(texts)
+    pad = 0 if len(joined_text) > 12 else 1
     return render.Padding(
         pad=(pad, 0, 0, 0),
         child=render.Marquee(
             width=64,
-            child=render.Text("; ".join(texts)),
-            offset_start=64,
-            offset_end=48
+            child=render.Text(joined_text),
+            offset_start=64
         )
     )
 

@@ -18,6 +18,7 @@ DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
 MAX_AGE = 60 * 10
 MAX_AIRPORT_TTL = 60 * 10
+MARQUEE_SPEED = 20  # lower = faster
 
 
 def fetch_airport_wx(airports):
@@ -82,8 +83,9 @@ def airport_wx_string(airport_wx):
     direction = get_if_present(airport_wx, "wind_dir_degrees")
     speed = get_if_present(airport_wx, "wind_speed_kt")
     gust = get_if_present(airport_wx, "wind_gust_kt")
-    wind = "%s @ %s%sKT" % (direction, speed, ("G%s" % gust) if gust else "")
     if direction and speed:
+        direction_formatted = left_pad(direction, "0", 3)
+        wind = "%s @ %s%sKT" % (direction_formatted, speed, ("G%s" % gust) if gust else "")
         template.append(wind)
     # visibility
     visibility = get_if_present(airport_wx, "visibility_sm")
@@ -101,10 +103,7 @@ def airport_wx_string(airport_wx):
     # altimeter
     altimeter = get_if_present(airport_wx, "altimeter")
     if altimeter:
-        altimeter_formatted = str(altimeter)
-        while len(altimeter_formatted) < 5:
-            altimeter_formatted += "0"
-        template.append("A%s" % altimeter_formatted)
+        template.append("A%s" % right_pad(altimeter, "0", 5))
     # weather
     wx = get_if_present(airport_wx, "wx")
     if wx:
@@ -129,8 +128,7 @@ def render_airports(airport_wx, primary_airport, secondary_airports):
         render.Marquee(
             width=64,
             child=render.Text(primary_airport_wx_string),
-            offset_start=64,
-            offset_end=48
+            offset_start=64
         )
     )
     # secondary airport flight categories
@@ -150,7 +148,8 @@ def render_airports(airport_wx, primary_airport, secondary_airports):
         )
     return render.Root(
         child=render.Column(row_widgets),
-        max_age=MAX_AGE
+        max_age=MAX_AGE,
+        delay=MARQUEE_SPEED
     )
 
 
@@ -211,6 +210,20 @@ def apply_if_present(fn, arg):
 
 def get_if_present(dict, key, fallback=None):
     return dict[key] if key in dict else fallback
+
+
+def left_pad(value, value_to_pad, desired_len):
+    result = str(value)
+    while len(result) < desired_len:
+        result = value_to_pad + result
+    return result
+
+
+def right_pad(value, value_to_pad, desired_len):
+    result = str(value)
+    while len(result) < desired_len:
+        result += value_to_pad
+    return result
 
 
 def get_schema():
