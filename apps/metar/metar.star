@@ -12,7 +12,7 @@ load("http.star", "http")
 load("xpath.star", "xpath")
 load("math.star", "math")
 
-WX_URL = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
+WX_URL = "https://aviationweather-bldr.ncep.noaa.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
 DEFAULT_PRIMARY = "KAUS"
 DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
