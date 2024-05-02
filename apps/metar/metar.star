@@ -12,7 +12,7 @@ load("http.star", "http")
 load("xpath.star", "xpath")
 load("math.star", "math")
 
-WX_URL = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
+WX_URL = "https://www.aviationweather.gov/cgi-bin/data/dataserver.php?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
 DEFAULT_PRIMARY = "KAUS"
 DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
@@ -49,11 +49,11 @@ def parse_airport_wx(xml, airport):
     cloud_bases = xml.query_all(query_prefix + "/sky_condition/@cloud_base_ft_agl") or []
     sky_condition = []
     for cover, base in zip(sky_cover, cloud_bases):
-        sky_condition.append(cover + sanitize_base(base))
+        # 25000 -> 250; 6500 -> 065; 200 -> 002
+        sky_condition.append(cover + left_pad(base[:-2], "0", 3))
     # i.e. TRSA, -BR, +SHRA, etc
     wx = xml.query(query_prefix + "/wx_string")
 
-    round_to_int = lambda t: int(math.round(float(t)))
     return {
         "station_id": airport,
         "flight_category": flight_category,
@@ -63,18 +63,19 @@ def parse_airport_wx(xml, airport):
         "wind_dir_degrees": apply_if_present(int, wind_dir_degrees),
         "wind_speed_kt": apply_if_present(int, wind_speed_kt),
         "wind_gust_kt": apply_if_present(int, wind_gust_kt),
-        "visibility_sm": apply_if_present(round_to_int, visibility_sm),
+        "visibility_sm": apply_if_present(parse_visibility_string, visibility_sm),
         "sky_condition": sky_condition,
         "wx": wx
     }
 
 
-# 25000 -> 250; 6500 -> 065; 200 -> 002
-def sanitize_base(base):
-    result = base[:-2]
-    while len(result) != 3:
-        result = "0" + result
-    return result
+def parse_visibility_string(input):
+    if not input:
+        return None
+    elif input.find("+") != -1:
+        return "P" + input.replace("+", "")
+    else:
+        return round_to_int(input)
 
 
 def airport_wx_string(airport_wx):
@@ -204,6 +205,10 @@ def round(num, precision):
     return math.round(num * math.pow(10, precision)) / math.pow(10, precision)
 
 
+def round_to_int(input):
+    return int(round(float(input), 0))
+
+
 def apply_if_present(fn, arg):
     return fn(arg) if arg else None
 
@@ -213,17 +218,19 @@ def get_if_present(dict, key, fallback=None):
 
 
 def left_pad(value, value_to_pad, desired_len):
-    result = str(value)
-    while len(result) < desired_len:
-        result = value_to_pad + result
-    return result
+    str_value = str(value)
+    if len(str_value) >= desired_len:
+        return str_value
+    else:
+        return left_pad(str(value_to_pad) + str_value, value_to_pad, desired_len)
 
 
 def right_pad(value, value_to_pad, desired_len):
-    result = str(value)
-    while len(result) < desired_len:
-        result += value_to_pad
-    return result
+    str_value = str(value)
+    if len(str_value) >= desired_len:
+        return str_value
+    else:
+        return right_pad(str_value + str(value_to_pad), value_to_pad, desired_len)
 
 
 def get_schema():
