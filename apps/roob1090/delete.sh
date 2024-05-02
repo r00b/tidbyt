@@ -1,0 +1,1 @@
+curl --request DELETE --url https://api.tidbyt.com/v0/devices/joyfully-factual-avid-tench-e04/installations/roob1090 --header "Authorization: Bearer $(cat ~/Developer/Repositories/tidbyt/apps/roob1090/tidbyt.key)" --header 'Content-Type: application/json'
