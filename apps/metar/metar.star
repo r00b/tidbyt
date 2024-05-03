@@ -10,6 +10,7 @@ load("schema.star", "schema")
 load("render.star", "render")
 load("http.star", "http")
 load("xpath.star", "xpath")
+load("re.star", "re")
 load("math.star", "math")
 
 WX_URL = "https://www.aviationweather.gov/cgi-bin/data/dataserver.php?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
@@ -60,13 +61,22 @@ def parse_airport_wx(xml, airport):
         "altimeter": apply_if_present(lambda a: round(float(a), 2), altimeter),
         "temp": apply_if_present(round_to_int, temp),
         "dewpoint": apply_if_present(round_to_int, dewpoint),
-        "wind_dir_degrees": apply_if_present(int, wind_dir_degrees),
+        "wind_dir_degrees": apply_if_present(parse_wind_direction, wind_dir_degrees),
         "wind_speed_kt": apply_if_present(int, wind_speed_kt),
         "wind_gust_kt": apply_if_present(int, wind_gust_kt),
         "visibility_sm": apply_if_present(parse_visibility_string, visibility_sm),
         "sky_condition": sky_condition,
         "wx": wx
     }
+
+
+def parse_wind_direction(input):
+    if not input:
+        return None
+    elif not is_numeric_string(str(input)):
+        return input
+    else:
+        return round_to_int(input)
 
 
 def parse_visibility_string(input):
@@ -231,6 +241,10 @@ def right_pad(value, value_to_pad, desired_len):
         return str_value
     else:
         return right_pad(str_value + str(value_to_pad), value_to_pad, desired_len)
+
+
+def is_numeric_string(s):
+    return bool(re.match(r'^\d+|\.$', s))
 
 
 def get_schema():
