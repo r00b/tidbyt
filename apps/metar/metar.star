@@ -185,7 +185,7 @@ def render_flight_category(ident, flight_category):
 
 
 def color_for_state(flight_category):
-    if flight_category == None:
+    if flight_category == None or flight_category == "":
         return "#000000"
     elif flight_category == "VFR":
         return "#00FF00"
@@ -196,7 +196,7 @@ def color_for_state(flight_category):
     elif flight_category == "LIFR":
         return "#FF00FF"
     else:
-        print("Unknown flight category %s" % flight_category)
+        print("Unknown flight category '%s'" % flight_category)
         return "#000000"
 
 
