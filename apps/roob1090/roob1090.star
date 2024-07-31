@@ -12,7 +12,7 @@ load("encoding/json.star", "json")
 load("encoding/base64.star", "base64")
 
 AIRPORT = "KAUS"
-AIRPORT_BOARD_API_URL = "https://aircraft.robsteilberg.io/airports/boards/%s"
+AIRPORT_BOARD_API_URL = "https://aircraft.robsteilberg.com/airports/boards/%s"
 
 MAX_AGE = 60
 ICON_SIZE = 7
@@ -31,7 +31,7 @@ def fetch_aircraft_board(icao):
     result = {}
     response = http.get(AIRPORT_BOARD_API_URL % icao)
     if response.status_code != 200:
-        print("Bad response from aircraft.robsteilberg.io: %s" % response.status_code)
+        print("Bad response from aircraft.robsteilberg.com: %s" % response.status_code)
         return result
     return json.decode(response.body())
 
