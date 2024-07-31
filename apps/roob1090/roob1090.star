@@ -133,7 +133,7 @@ def render_flight_text(texts):
 
 
 def get_if_present(dict, key, fallback=None):
-    return dict[key] if key in dict else fallback
+    return dict[key] if key in dict and dict[key] else fallback
 
 
 def get_schema():
