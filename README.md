@@ -1,0 +1,1 @@
+The tidbyt.key file is used by the delete.sh scripts to remove the custom Tidbyt apps at night.
