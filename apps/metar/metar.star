@@ -13,7 +13,7 @@ load("xpath.star", "xpath")
 load("re.star", "re")
 load("math.star", "math")
 
-WX_URL = "https://www.aviationweather.gov/cgi-bin/data/dataserver.php?dataSource=metars&requestType=retrieve&format=xml&stationString=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
+WX_URL = "https://aviationweather.gov/api/data/metar?format=xml&ids=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
 DEFAULT_PRIMARY = "KAUS"
 DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
