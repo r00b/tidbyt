@@ -19,7 +19,7 @@ DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
 MAX_AGE = 60 * 10
 MAX_AIRPORT_TTL = 60 * 10
-MARQUEE_SPEED = 20  # lower = faster
+MARQUEE_SPEED = 30  # lower = faster
 
 
 def fetch_airport_wx(airports):
@@ -52,7 +52,7 @@ def parse_airport_wx(xml, airport):
     for cover, base in zip(sky_cover, cloud_bases):
         # 25000 -> 250; 6500 -> 065; 200 -> 002
         sky_condition.append(cover + left_pad(base[:-2], "0", 3))
-    # i.e. TRSA, -BR, +SHRA, etc
+    # i.e. TSRA, -BR, +SHRA, etc
     wx = xml.query(query_prefix + "/wx_string")
 
     return {
@@ -102,6 +102,10 @@ def airport_wx_string(airport_wx):
     visibility = get_if_present(airport_wx, "visibility_sm")
     if visibility:
         template.append("%sSM" % visibility)
+    # weather
+    wx = get_if_present(airport_wx, "wx")
+    if wx:
+        template.append(wx)
     # sky condition
     sky_conditions = get_if_present(airport_wx, "sky_condition")
     if sky_conditions and len(sky_conditions) > 0:
@@ -115,10 +119,6 @@ def airport_wx_string(airport_wx):
     altimeter = get_if_present(airport_wx, "altimeter")
     if altimeter:
         template.append("A%s" % right_pad(altimeter, "0", 5))
-    # weather
-    wx = get_if_present(airport_wx, "wx")
-    if wx:
-        template.append(wx)
     return " ".join(template)
 
 
