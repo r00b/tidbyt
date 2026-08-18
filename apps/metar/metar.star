@@ -13,7 +13,7 @@ load("xpath.star", "xpath")
 load("re.star", "re")
 load("math.star", "math")
 
-WX_URL = "https://aviationweather.gov/api/data/metar?format=xml&ids=%s&mostrecentforeachstation=constraint&hoursBeforeNow=2"
+WX_URL = "https://aviationweather.gov/api/data/metar?format=xml&ids=%s"
 DEFAULT_PRIMARY = "KAUS"
 DEFAULT_SECONDARY = "KDFW,MHRO,KIAH,KDCA"
 
@@ -24,7 +24,9 @@ MARQUEE_SPEED = 30  # lower = faster
 
 def fetch_airport_wx(airports):
     result = {}
-    response = http.get(WX_URL % airports)
+    url = WX_URL % airports
+    print("Fetching METAR from %s" % url)
+    response = http.get(url)
     if response.status_code != 200:
         print("Bad response from aviationweather.gov: %s" % response.status_code)
         return result
